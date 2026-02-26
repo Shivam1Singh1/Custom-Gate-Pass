@@ -1,13 +1,13 @@
 import frappe
 
 
-# Checks if all Gate Pass roles assigned to the user are marked as hide=1
+# Checks if all Salary Slip roles assigned to the user are marked as hide=1
 def _all_user_roles_hidden(user):
     user_roles = set(frappe.get_roles(user))
 
     rows = frappe.db.sql("""
         SELECT role, hide FROM `tabCustom DocPerm`
-        WHERE parent = 'Gate Pass'
+        WHERE parent = 'Salary Slip'
     """, as_dict=True)
 
     if not rows:
@@ -22,48 +22,6 @@ def _all_user_roles_hidden(user):
     return all(hide_map[role] == 1 for role in relevant_roles)
 
 
-# Checks if user has at least one Gate Pass role marked as hide=1
-def _any_user_role_hidden(user):
-    hidden_roles = frappe.db.sql("""
-        SELECT role FROM `tabCustom DocPerm`
-        WHERE parent = 'Gate Pass' AND hide = 1
-    """, pluck="role")
-
-    if not hidden_roles:
-        return False
-
-    return bool(set(frappe.get_roles(user)) & set(hidden_roles))
-
-
-# Shares document with approver unless approver has a hidden role
-def share_doc_with_permission(doc, method=None):
-    if not doc.approver:
-        return False
-    if _any_user_role_hidden(doc.approver):
-        return False
-
-    from hrms.hr.utils import share_doc_with_approver
-    share_doc_with_approver(doc, doc.approver)
-    return True
-
-
-# Shares document with employee's leave approver unless they have a hidden role
-def set_employee_name_on_gate_pass(doc, method=None):
-    if not doc.emoloyee:
-        return
-
-    employee = frappe.get_doc("Employee", doc.emoloyee)
-
-    if not employee.leave_approver:
-        return False
-    if _any_user_role_hidden(employee.leave_approver):
-        return False
-
-    from hrms.hr.utils import share_doc_with_approver
-    share_doc_with_approver(doc, employee.leave_approver)
-    return True
-
-
 # Controls document-level access based on hidden role logic
 def has_permission(doc, ptype, user):
     if not user:
@@ -73,11 +31,11 @@ def has_permission(doc, ptype, user):
         user_employee = frappe.db.get_value("Employee", {"user_id": user}, "name")
         if not user_employee:
             return False
-        return doc.emoloyee == user_employee
+        return doc.employee == user_employee
 
     hidden_roles = frappe.db.sql("""
         SELECT role FROM `tabCustom DocPerm`
-        WHERE parent = 'Gate Pass' AND hide = 1
+        WHERE parent = 'Salary Slip' AND hide = 1
     """, pluck="role")
 
     if not hidden_roles:
@@ -91,14 +49,14 @@ def has_permission(doc, ptype, user):
     if not user_employee:
         return None
 
-    if doc.emoloyee == user_employee:
+    if doc.employee == user_employee:
         return True
 
     reportees = frappe.db.sql("""
         SELECT name FROM `tabEmployee` WHERE reports_to = %s
     """, user_employee, pluck="name")
 
-    if doc.emoloyee in reportees:
+    if doc.employee in reportees:
         return False
 
     return None
@@ -116,27 +74,26 @@ def get_permission_query_conditions(user, doctype=None):
 
         escaped = frappe.db.escape(user_employee)
 
-        # Exclude shared Gate Passes of others (DocShare bypass fix)
-        # Data delete nahi hoga — sirf hide hoga, untick karne pe wapas aayega
+        # Exclude shared Salary Slips of others (DocShare bypass fix)
         shared_others = frappe.db.sql(f"""
             SELECT ds.share_name FROM `tabDocShare` ds
-            INNER JOIN `tabGate Pass` gp ON gp.name = ds.share_name
-            WHERE ds.share_doctype = 'Gate Pass'
+            INNER JOIN `tabSalary Slip` ss ON ss.name = ds.share_name
+            WHERE ds.share_doctype = 'Salary Slip'
             AND ds.user = {frappe.db.escape(user)}
-            AND gp.emoloyee != {escaped}
+            AND ss.employee != {escaped}
         """, pluck="share_name")
 
-        condition = f"`tabGate Pass`.`emoloyee` = {escaped}"
+        condition = f"`tabSalary Slip`.`employee` = {escaped}"
 
         if shared_others:
             others_str = ", ".join([frappe.db.escape(p) for p in shared_others])
-            condition += f" AND `tabGate Pass`.`name` NOT IN ({others_str})"
+            condition += f" AND `tabSalary Slip`.`name` NOT IN ({others_str})"
 
         return condition
 
     hidden_roles = frappe.db.sql("""
         SELECT role FROM `tabCustom DocPerm`
-        WHERE parent = 'Gate Pass' AND hide = 1
+        WHERE parent = 'Salary Slip' AND hide = 1
     """, pluck="role")
 
     if not hidden_roles:
@@ -159,18 +116,18 @@ def get_permission_query_conditions(user, doctype=None):
 
     reportees_str = ", ".join([frappe.db.escape(r) for r in reportees])
 
-    shared_reportee_passes = frappe.db.sql(f"""
+    shared_reportee_slips = frappe.db.sql(f"""
         SELECT ds.share_name FROM `tabDocShare` ds
-        INNER JOIN `tabGate Pass` gp ON gp.name = ds.share_name
-        WHERE ds.share_doctype = 'Gate Pass'
+        INNER JOIN `tabSalary Slip` ss ON ss.name = ds.share_name
+        WHERE ds.share_doctype = 'Salary Slip'
         AND ds.`user` = {frappe.db.escape(user)}
-        AND gp.emoloyee IN ({reportees_str})
+        AND ss.employee IN ({reportees_str})
     """, pluck="share_name")
 
-    condition = f"`tabGate Pass`.`emoloyee` NOT IN ({reportees_str})"
+    condition = f"`tabSalary Slip`.`employee` NOT IN ({reportees_str})"
 
-    if shared_reportee_passes:
-        passes_str = ", ".join([frappe.db.escape(p) for p in shared_reportee_passes])
-        condition += f" AND `tabGate Pass`.`name` NOT IN ({passes_str})"
+    if shared_reportee_slips:
+        slips_str = ", ".join([frappe.db.escape(p) for p in shared_reportee_slips])
+        condition += f" AND `tabSalary Slip`.`name` NOT IN ({slips_str})"
 
     return condition
