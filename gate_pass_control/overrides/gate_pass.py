@@ -115,7 +115,24 @@ def get_permission_query_conditions(user, doctype=None):
             return "1=0"
 
         escaped = frappe.db.escape(user_employee)
-        return f"`tabGate Pass`.`emoloyee` = {escaped}"
+
+        # Exclude shared Gate Passes of others (DocShare bypass fix)
+        # Data delete nahi hoga — sirf hide hoga, untick karne pe wapas aayega
+        shared_others = frappe.db.sql(f"""
+            SELECT ds.share_name FROM `tabDocShare` ds
+            INNER JOIN `tabGate Pass` gp ON gp.name = ds.share_name
+            WHERE ds.share_doctype = 'Gate Pass'
+            AND ds.user = {frappe.db.escape(user)}
+            AND gp.emoloyee != {escaped}
+        """, pluck="share_name")
+
+        condition = f"`tabGate Pass`.`emoloyee` = {escaped}"
+
+        if shared_others:
+            others_str = ", ".join([frappe.db.escape(p) for p in shared_others])
+            condition += f" AND `tabGate Pass`.`name` NOT IN ({others_str})"
+
+        return condition
 
     hidden_roles = frappe.db.sql("""
         SELECT role FROM `tabCustom DocPerm`
