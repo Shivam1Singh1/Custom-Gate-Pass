@@ -26,7 +26,10 @@ app_license = "mit"
 
 # include js, css files in header of desk.html
 # app_include_css = "/assets/gate_pass_control/css/gate_pass_control.css"
-# app_include_js = "/assets/gate_pass_control/js/gate_pass_control.js"
+
+app_include_js = [
+    "/assets/gate_pass_control/js/permission_manager_patch.js"
+]
 
 # include js, css files in header of web template
 # web_include_css = "/assets/gate_pass_control/css/gate_pass_control.css"
@@ -40,13 +43,13 @@ app_license = "mit"
 # webform_include_css = {"doctype": "public/css/doctype.css"}
 
 # include js in page
-# page_js = {"page" : "public/js/file.js"}
+# page_js = {"page": "public/js/file.js"}
 
 # include js in doctype views
-# doctype_js = {"doctype" : "public/js/doctype.js"}
-# doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
-# doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
-# doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
+# doctype_js = {"doctype": "public/js/doctype.js"}
+# doctype_list_js = {"doctype": "public/js/doctype_list.js"}
+# doctype_tree_js = {"doctype": "public/js/doctype_tree.js"}
+# doctype_calendar_js = {"doctype": "public/js/doctype_calendar.js"}
 
 # Svg Icons
 # ------------------
@@ -67,13 +70,11 @@ app_license = "mit"
 # Generators
 # ----------
 
-# automatically create page for each record of this doctype
 # website_generators = ["Web Page"]
 
 # Jinja
 # ----------
 
-# add methods and filters to jinja environment
 # jinja = {
 # 	"methods": "gate_pass_control.utils.jinja_methods",
 # 	"filters": "gate_pass_control.utils.jinja_filters"
@@ -93,41 +94,34 @@ app_license = "mit"
 
 # Integration Setup
 # ------------------
-# To set up dependencies/integrations with other apps
-# Name of the app being installed is passed as an argument
 
 # before_app_install = "gate_pass_control.utils.before_app_install"
 # after_app_install = "gate_pass_control.utils.after_app_install"
 
 # Integration Cleanup
 # -------------------
-# To clean up dependencies/integrations with other apps
-# Name of the app being uninstalled is passed as an argument
 
 # before_app_uninstall = "gate_pass_control.utils.before_app_uninstall"
 # after_app_uninstall = "gate_pass_control.utils.after_app_uninstall"
 
 # Desk Notifications
 # ------------------
-# See frappe.core.notifications.get_notification_config
 
 # notification_config = "gate_pass_control.notifications.get_notification_config"
 
 # Permissions
 # -----------
-# Permissions evaluated in scripted ways
 
-# permission_query_conditions = {
-# 	"Event": "frappe.desk.doctype.event.event.get_permission_query_conditions",
-# }
-#
-# has_permission = {
-# 	"Event": "frappe.desk.doctype.event.event.has_permission",
-# }
+permission_query_conditions = {
+    "Gate Pass": "gate_pass_control.overrides.gate_pass.get_permission_query_conditions"
+}
+
+has_permission = {
+    "Gate Pass": "gate_pass_control.overrides.gate_pass.has_permission"
+}
 
 # DocType Class
 # ---------------
-# Override standard doctype classes
 
 # override_doctype_class = {
 # 	"ToDo": "custom_app.overrides.CustomToDo"
@@ -135,7 +129,6 @@ app_license = "mit"
 
 # Document Events
 # ---------------
-# Hook on document methods and events
 
 # doc_events = {
 # 	"*": {
@@ -173,60 +166,52 @@ app_license = "mit"
 
 # Overriding Methods
 # ------------------------------
-#
-# override_whitelisted_methods = {
-# 	"frappe.desk.doctype.event.event.get_events": "gate_pass_control.event.get_events"
-# }
-#
-# each overriding function accepts a `data` argument;
-# generated from the base implementation of the doctype dashboard,
-# along with any modifications made in other Frappe apps
+
+override_whitelisted_methods = {
+    "frappe.core.page.permission_manager.permission_manager.update":
+        "gate_pass_control.overrides.permission_manager.update",
+
+    "attendee_life_cycle_custom.custom_scripts.gate_pass.share_doc_with_permission":
+        "gate_pass_control.overrides.gate_pass.share_doc_with_permission",
+
+    "attendee_life_cycle_custom.custom_scripts.gate_pass.set_employee_name_on_gate_pass":
+        "gate_pass_control.overrides.gate_pass.set_employee_name_on_gate_pass",
+}
+
+# Fixtures
+# ------------------------------
+
+fixtures = [
+    {
+        "dt": "Custom Field",
+        "filters": [["dt", "=", "DocPerm"], ["fieldname", "=", "hide"]]
+    }
+]
+
 # override_doctype_dashboards = {
 # 	"Task": "gate_pass_control.task.get_dashboard_data"
 # }
 
-# exempt linked doctypes from being automatically cancelled
-#
 # auto_cancel_exempted_doctypes = ["Auto Repeat"]
-
-# Ignore links to specified DocTypes when deleting documents
-# -----------------------------------------------------------
 
 # ignore_links_on_delete = ["Communication", "ToDo"]
 
 # Request Events
 # ----------------
+
 # before_request = ["gate_pass_control.utils.before_request"]
 # after_request = ["gate_pass_control.utils.after_request"]
 
 # Job Events
 # ----------
+
 # before_job = ["gate_pass_control.utils.before_job"]
 # after_job = ["gate_pass_control.utils.after_job"]
 
 # User Data Protection
 # --------------------
 
-# user_data_fields = [
-# 	{
-# 		"doctype": "{doctype_1}",
-# 		"filter_by": "{filter_by}",
-# 		"redact_fields": ["{field_1}", "{field_2}"],
-# 		"partial": 1,
-# 	},
-# 	{
-# 		"doctype": "{doctype_2}",
-# 		"filter_by": "{filter_by}",
-# 		"partial": 1,
-# 	},
-# 	{
-# 		"doctype": "{doctype_3}",
-# 		"strict": False,
-# 	},
-# 	{
-# 		"doctype": "{doctype_4}"
-# 	}
-# ]
+# user_data_fields = []
 
 # Authentication and authorization
 # --------------------------------
@@ -235,15 +220,11 @@ app_license = "mit"
 # 	"gate_pass_control.auth.validate"
 # ]
 
-# Automatically update python controller files with type annotations for this app.
 # export_python_type_annotations = True
 
-# default_log_clearing_doctypes = {
-# 	"Logging DocType Name": 30  # days to retain logs
-# }
+# default_log_clearing_doctypes = {}
 
 # Translation
 # ------------
-# List of apps whose translatable strings should be excluded from this app's translations.
-# ignore_translatable_strings_from = []
 
+# ignore_translatable_strings_from = []
